@@ -1,0 +1,16 @@
+name: Hello Runner
+
+on:
+  workflow_dispatch:   # trigger manually from the Actions tab
+
+jobs:
+  hello:
+    name: Hello World
+    runs-on: self-hosted   # executes on your local Mac runner
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run hello script
+        run: bash scripts/hello-runner.sh

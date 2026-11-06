@@ -1,0 +1,84 @@
+name: Terraform checks
+
+# Run as a required status check whenever Terraform files change.
+# Triggers on push and on PRs that touch anything under terraform/.
+
+on:
+  push:
+    paths:
+      - "terraform/**"
+  pull_request:
+    paths:
+      - "terraform/**"
+
+jobs:
+  # ── fmt ─────────────────────────────────────────────────────────────────────
+  # One pass over the whole repo catches every module.
+  # terraform fmt -check exits non-zero if any file needs reformatting.
+
+  fmt:
+    name: Format check (terraform fmt)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Check formatting
+        # -recursive walks all subdirectories; -diff prints the diff on failure
+        run: terraform fmt -check -recursive -diff terraform/
+
+  # ── validate: apps ──────────────────────────────────────────────────────────
+  # terraform validate requires providers to be initialised. We use
+  # -backend=false so no real credentials or remote state are needed.
+
+  validate-apps:
+    name: Validate terraform/apps
+    runs-on: ubuntu-latest
+    needs: fmt
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Init (no backend)
+        working-directory: terraform/apps
+        run: terraform init -backend=false
+
+      - name: Validate
+        working-directory: terraform/apps
+        run: terraform validate
+
+  # ── validate: pipeline ──────────────────────────────────────────────────────
+
+  validate-pipeline:
+    name: Validate terraform/pipeline
+    runs-on: ubuntu-latest
+    needs: fmt
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Init (no backend)
+        working-directory: terraform/pipeline
+        run: terraform init -backend=false
+
+      - name: Validate
+        working-directory: terraform/pipeline
+        run: terraform validate

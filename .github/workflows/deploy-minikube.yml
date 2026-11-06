@@ -1,0 +1,84 @@
+# name: Deploy to Minikube
+
+# on:
+#   workflow_run:
+#     workflows:
+#       - "Docker Publish"
+#     types:
+#       - completed
+#     branches:
+#       - main
+#   # Allow manual trigger with an optional custom image tag
+#   workflow_dispatch:
+#     inputs:
+#       image_tag:
+#         description: "Image tag to deploy (default: latest)"
+#         required: false
+#         default: "latest"
+
+# env:
+#   REGISTRY: ghcr.io
+#   IMAGE_NAME: ${{ github.repository }}
+
+# jobs:
+#   deploy:
+#     name: Deploy to local Minikube
+#     # ── Runs on YOUR machine, not a GitHub-hosted runner ──────────────────────
+#     runs-on: self-hosted
+
+#     # Only deploy when the upstream publish workflow succeeded
+#     if: >
+#       github.event_name == 'workflow_dispatch' ||
+#       github.event.workflow_run.conclusion == 'success'
+
+#     steps:
+#       # ── 1. Resolve the image tag ──────────────────────────────────────────
+#       - name: Set image tag
+#         id: tag
+#         run: |
+#           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+#             echo "value=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+#           else
+#             # Use the short SHA that docker-publish.yml stamped onto the image
+#             SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+#             echo "value=sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+#           fi
+
+#       # ── 2. Point kubectl at Minikube ──────────────────────────────────────
+#       - name: Switch kubectl context to Minikube
+#         run: kubectl config use-context minikube
+
+#       # ── 3. Pull the image into Minikube's Docker daemon ───────────────────
+#       #    Minikube has its own daemon; images must be loaded there so that
+#       #    imagePullPolicy: Never / IfNotPresent works without a remote pull.
+#       - name: Pull image into Minikube Docker daemon
+#         run: |
+#           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.value }}"
+#           echo "Loading image: ${IMAGE}"
+#           # Authenticate with GHCR inside Minikube's docker env
+#           eval $(minikube docker-env)
+#           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+#             -u "${{ github.actor }}" --password-stdin
+#           docker pull "${IMAGE}"
+
+#       # ── 4. Apply Kubernetes manifests ─────────────────────────────────────
+#       - name: Apply Kubernetes manifests
+#         run: |
+#           kubectl apply -f k8s/
+
+#       # ── 5. Update the deployment image ───────────────────────────────────
+#       - name: Update deployment image
+#         run: |
+#           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.value }}"
+#           kubectl set image deployment/gists-api-server \
+#             gists-api-server="${IMAGE}" \
+#             --record || true
+
+#       # ── 6. Wait for rollout ───────────────────────────────────────────────
+#       - name: Wait for rollout
+#         run: |
+#           kubectl rollout status deployment/gists-api-server --timeout=120s
+
+#       # ── 7. Show running pods ──────────────────────────────────────────────
+#       - name: Show pods
+#         run: kubectl get pods -l app=gists-api-server

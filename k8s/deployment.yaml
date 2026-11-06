@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gists-api-server
+  labels:
+    app: gists-api-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gists-api-server
+  template:
+    metadata:
+      labels:
+        app: gists-api-server
+    spec:
+      containers:
+        - name: gists-api-server
+          # This placeholder is overwritten by `kubectl set image` in the workflow.
+          # On first apply it pulls whatever tag you have loaded in Minikube.
+          image: ghcr.io/OWNER/REPO:latest
+          imagePullPolicy: IfNotPresent   # use locally loaded image; avoids re-pull
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: NODE_ENV
+              value: production
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
