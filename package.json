@@ -1,0 +1,21 @@
+{
+  "name": "gists-api-server",
+  "version": "1.0.0",
+  "description": "HTTP server that exposes a user's public GitHub Gists",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "jest --runInBand --forceExit"
+  },
+  "dependencies": {
+    "express": "4.19.2"
+  },
+  "devDependencies": {
+    "jest": "29.7.0",
+    "nock": "13.5.4",
+    "supertest": "7.1.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

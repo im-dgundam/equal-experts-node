@@ -1,0 +1,25 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# Never commit terraform.tfvars to source control.
+
+aws_region = "eu-west-1"
+project    = "gists-api"
+
+# ECS – staging
+staging_cluster_name           = "gists-api-staging"
+staging_service_name           = "gists-api-staging-svc"
+staging_task_definition_family = "gists-api-staging"
+
+# ECS – production
+production_cluster_name           = "gists-api-production"
+production_service_name           = "gists-api-production-svc"
+production_task_definition_family = "gists-api-production"
+
+# Load test target
+staging_url = "http://gists-api-staging.internal"
+
+# Optional – leave empty to skip the email subscription
+pipeline_approval_email = "team@example.com"
+
+# Optional overrides
+container_name           = "gists-api"
+ecr_untagged_expiry_days = 14
